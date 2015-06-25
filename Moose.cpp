@@ -15,11 +15,11 @@ Moose::Moose(){
 
 Moose::Moose(int Nx,int Ggx,int Gtx,int Gsx,int Msx,double musx,double mugx,int Gginvx,int IMx,int Ggdomx,int Lx,int Qx){
 	srand( time(0) );
-	N = Nx;
+	N = Nx; // population size
 	Ms = Msx;
-	int Gg = Ggx; // ancestral homozygote
-	int Gt = Gtx; // gamma_T
-	int Gs = Gsx; // gamma_S
+	int Gg = Ggx;
+	int Gt = Gtx;
+	int Gs = Gsx;
 	L = Lx;
 	Q = Qx;
 	Gginv = Gginvx;
@@ -27,8 +27,8 @@ Moose::Moose(int Nx,int Ggx,int Gtx,int Gsx,int Msx,double musx,double mugx,int 
 	IM = IMx;
 	mus = musx;
 	mug = mugx;
-	rngm = gsl_rng_alloc (gsl_rng_mt19937);
-	gsl_rng_set (rngm, GenSeed());
+	rngm = gsl_rng_alloc (gsl_rng_mt19937); // init random number generator
+	gsl_rng_set (rngm, GenSeed());		// seed rng
 
 	// initialize population
 	Organism org;
@@ -88,41 +88,31 @@ Moose::Moose(int Nx,int Ggx,int Gtx,int Gsx,int Msx,double musx,double mugx,int 
 		}
 		i+=1;
 	}
-	// evolve further, calc avg
-	double FUsum = 0;
-	double FAsum = 0;
-	double ntot = 0;
+	// run until fixtion or extinction of the invader allele
 	for (int i=0; i<1000000; i++){
 		FU = AvgFitness();
-		//FUsum += FU;
 		GrowAll();
-		//FA = AvgFitness();
-		//Fwt = AvgWTFitness();
-		//Fmut = AvgInvFitness();
-		//FAsum += FA;
 		Selection();
 		Fusion();
 		gen += 1;
-		ntot += 1;
 		double Ggfreq = GetGginvFreq();
 		if (Ggfreq==0 or Ggfreq==1){
 			if (Ggfreq==0){ retval = 0;}
 			else if (Ggfreq==1){ retval = 1;}
 			break;
 		}
-		//cout<<gen<<' '<<FU<<' '<<FA<<' '<<Ggfreq<<endl;
-		//cout<<gen<<' '<<Fwt<<' '<<Fmut<<' '<<GetGginvFreq()<<endl;
 	}
 }
 
 void Moose::GrowAll(){
+	// Run the Organism life cycle one by one
 	for (int i=0;i<N;i++){
 		Population[i].Grow();
 	}
 }
 
 void Moose::Selection(){
-	// separate MTypes
+	// Applies selection to both mating types as a weighted sampling with replacement
 	vector<Organism> Mpop;
 	vector<Organism> Fpop;
 	for (int i=0;i<N;i++){
@@ -138,10 +128,8 @@ void Moose::Selection(){
 		fitsM[i] = Mpop[i].AdultFitness;
 		fitsF[i] = Fpop[i].AdultFitness;
 	}
-	// now sample with replacement according to weights
 	vector <double> sampleM = Sample(fitsM, fitsM.size());
 	vector <double> sampleF = Sample(fitsF, fitsF.size());
-	// PrintVec(sample);
 	vector<Organism> newPopulation;
 	for (int i=0;i<N/2;i++){
 		newPopulation.push_back(Mpop[sampleM[i]]);
@@ -152,7 +140,7 @@ void Moose::Selection(){
 
 void Moose::Fusion(){
 	vector<Gamete> Mgams;
-	vector<Gamete > Fgams;
+	vector<Gamete> Fgams;
 	for (int i=0;i<N;i++){
 		assert( int(Population[i].gline.size())==2 );
 		if (Population[i].WZg[0]!=Population[i].WZg[1]){
@@ -181,14 +169,13 @@ void Moose::Fusion(){
 }
 
 vector<double> Moose::Sample(vector<double> list, int n){
-	// sample n items from the list of weights with replacement
-	// returns indices of selected items from the list of weights
+	// Sample n items from the list of weights with replacement
+	// Returns indices of selected items from the list of weights
 	double total = accumulate(list.begin(),list.end(), 0.0);
 	vector<double> selection;
 	int j = 0;
 	double w = list[0];
 	while (n>0){
-		// draw a single weighted sample
 		double r = gsl_rng_uniform (rngm);
 		double x = total*(1.0 - pow(r, 1.0/n));
 		total = total - x;
@@ -205,25 +192,22 @@ vector<double> Moose::Sample(vector<double> list, int n){
 }
 
 vector<Organism> Moose::Fuse(Gamete MGamx, Gamete FGamx){
+	// Fuse two gametes, return a zygote as an instance of Organism
 	int mn = 0;
 	int Mn = 0;
 	assert(MGamx.M==Ms/2);
-	//if (FGamx.nA==1){
 	if (IM==1){
-		//BPI
+		//BPI fusion
 		mn = MGamx.m + FGamx.m;
 		Mn = MGamx.M + FGamx.M;
 	}
-	//else if (FGamx.nA==0){
 	else if (IM==0){
-		//UPI
+		//UPI fusion
 		mn = FGamx.m;
 		Mn = FGamx.M;
 	}
-	//resample to M*2^Q
 	int q = log2(1.0*FGamx.M/Ms) + 1;
 	assert(q==Q);
-	//assert(q==0);
 	assert(FGamx.M == Ms/2 * pow(2.0,q));
 	mn = gsl_ran_binomial(rngm, 1.0*mn/Mn, Ms*pow(2.0,q));
 	Mn = Ms*pow(2.0,q);
@@ -241,6 +225,7 @@ vector<Organism> Moose::Fuse(Gamete MGamx, Gamete FGamx){
 }
 
 double Moose::AvgFitness(){
+	// Get average fitnes of the whole population
 	double fits = 0;
 	for (int i=0; i<N; i++){
 		fits += Population[i].AdultFitness;
@@ -249,6 +234,7 @@ double Moose::AvgFitness(){
 }
 
 double Moose::AvgInvFitness(){
+	// Get average fitness of the invading allele
 	double fits = 0;
 	int ntot = 0;
 	for (int i=0; i<N; i++){
@@ -261,6 +247,7 @@ double Moose::AvgInvFitness(){
 }
 
 double Moose::AvgWTFitness(){
+	// Get the average fitness of the wild type allele
 	double fits = 0;
 	int ntot = 0;
 	for (int i=0; i<N; i++){
@@ -274,6 +261,7 @@ double Moose::AvgWTFitness(){
 
 
 double Moose::GetGginvFreq(){
+	// Get current frequency of the invader allele
 	double c = 0;
 	for (int i=0;i<N;i++){
 		assert(int( Population[i].soma.size() )==1); 
@@ -291,6 +279,8 @@ void Moose::PrintPop(){
 }
 
 long Moose::GenSeed(){
+	// Generates the seed for the random number generator
+	// based on current time and process number 
 	long s, seed, pid;
 	int sr;
 	time_t seconds;
@@ -308,8 +298,6 @@ long Moose::GenSeed(){
 	delete[] memblock;
 	}
 	else{sr = 1 ;}
-	//cout << seed << endl;
 	seed += sr;
-	//cout << seed << endl;
 	return seed;
 }
