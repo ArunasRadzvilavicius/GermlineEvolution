@@ -197,19 +197,23 @@ vector<Organism> Moose::Fuse(Gamete MGamx, Gamete FGamx){
 	int Mn = 0;
 	assert(MGamx.M==Ms/2);
 	if (IM==1){
-		//BPI fusion
-		mn = MGamx.m + FGamx.m;
-		Mn = MGamx.M + FGamx.M;
+                //BPI
+                //int Fmn = gsl_ran_binomial(rngm, 1.0*FGamx.m/FGamx.M, 2*FGamx.M-Ms/2);
+                int Fmn = gsl_ran_hypergeometric (rngm, 2*FGamx.m, 2*FGamx.M-2*FGamx.m, 2*FGamx.M-Ms/2);
+                int FMn = 2*FGamx.M-Ms/2;
+                int Mmn = MGamx.m; int MMn = MGamx.M;
+                mn = Fmn + Mmn;
+                Mn = FMn + MMn;
 	}
 	else if (IM==0){
 		//UPI fusion
-		mn = FGamx.m;
-		Mn = FGamx.M;
+		mn = 2*FGamx.m;
+		Mn = 2*FGamx.M;
 	}
 	int q = log2(1.0*FGamx.M/Ms) + 1;
 	assert(q==Q);
 	assert(FGamx.M == Ms/2 * pow(2.0,q));
-	mn = gsl_ran_binomial(rngm, 1.0*mn/Mn, Ms*pow(2.0,q));
+	//mn = gsl_ran_binomial(rngm, 1.0*mn/Mn, Ms*pow(2.0,q));
 	Mn = Ms*pow(2.0,q);
 	Organism Org;
 	gtype Gggx; Gggx = gtype (2,0);
