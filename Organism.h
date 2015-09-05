@@ -14,6 +14,7 @@ public:
 	Organism(int mx,int Mx,gtype WZgx,gtype Gggx,int Gtx,int Gsx,gsl_rng * rngox,double musx,double mugx,int Ggdomx,int Lx,gtype Qgx,int Msx);
 	vector< vector<int> > soma;
 	vector< Gamete > gline;
+	vector<vector<int> > pregline;
 	gtype WZg;
 	gtype Qg;
 	int L;
@@ -30,6 +31,7 @@ public:
 	void TissueMitosis();
 	void Mutation(double mux);
 	void TissueMutation();
+	void CompleteGametogenesis();
 	void Gametogenesis();
 	void SomaticGametogenesis();
 	vector<vector<cell> > Tissues;

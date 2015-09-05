@@ -29,8 +29,8 @@ int main(int argc, char **argv)
 	int ntot = 0;
 	int nfixed = 0;
 	// Calculate the fixation probability of the invading germline allele
-	for (int i=0;i<10;i++){
-		moosy = Moose(100,Ggx,Gtx,Gsx,Msx,musx,mugx,Gginvx,IMx,Ggdomx,Lx,Qx);
+	for (int i=0;i<1;i++){
+		moosy = Moose(500,Ggx,Gtx,Gsx,Msx,musx,mugx,Gginvx,IMx,Ggdomx,Lx,Qx);
     		nfixed += moosy.retval;
 		ntot += 1;
     	}

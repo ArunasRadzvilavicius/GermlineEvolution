@@ -89,9 +89,11 @@ Moose::Moose(int Nx,int Ggx,int Gtx,int Gsx,int Msx,double musx,double mugx,int 
 		i+=1;
 	}
 	// run until fixtion or extinction of the invader allele
-	for (int i=0; i<1000000; i++){
+	//for (int i=0; i<1000000; i++){
+	while (true){
 		FU = AvgFitness();
 		GrowAll();
+		FA = AvgFitness();
 		Selection();
 		Fusion();
 		gen += 1;
@@ -101,6 +103,7 @@ Moose::Moose(int Nx,int Ggx,int Gtx,int Gsx,int Msx,double musx,double mugx,int 
 			else if (Ggfreq==1){ retval = 1;}
 			break;
 		}
+		//cout<<gen<<' '<<FU<<' '<<FA<<' '<<GetGginvFreq()<<endl;
 	}
 }
 
@@ -116,7 +119,7 @@ void Moose::Selection(){
 	vector<Organism> Mpop;
 	vector<Organism> Fpop;
 	for (int i=0;i<N;i++){
-		assert(Population[i].gline.size()==2);
+		assert(Population[i].pregline.size()==1);
 		if (Population[i].WZg[0]!=Population[i].WZg[1]) {Fpop.push_back(Population[i]);}
 		else {assert(Population[i].WZg[0]==0);Mpop.push_back(Population[i]);}
 	}
@@ -139,6 +142,9 @@ void Moose::Selection(){
 }
 
 void Moose::Fusion(){
+	for (int i=0;i<N;i++){
+		Population[i].CompleteGametogenesis();
+	}
 	vector<Gamete> Mgams;
 	vector<Gamete> Fgams;
 	for (int i=0;i<N;i++){
@@ -196,25 +202,26 @@ vector<Organism> Moose::Fuse(Gamete MGamx, Gamete FGamx){
 	int mn = 0;
 	int Mn = 0;
 	assert(MGamx.M==Ms/2);
+	assert(FGamx.M == Ms/2*pow(2.0,Q));
 	if (IM==1){
                 //BPI
-                //int Fmn = gsl_ran_binomial(rngm, 1.0*FGamx.m/FGamx.M, 2*FGamx.M-Ms/2);
-                int Fmn = gsl_ran_hypergeometric (rngm, 2*FGamx.m, 2*FGamx.M-2*FGamx.m, 2*FGamx.M-Ms/2);
-                int FMn = 2*FGamx.M-Ms/2;
-                int Mmn = MGamx.m; int MMn = MGamx.M;
-                mn = Fmn + Mmn;
-                Mn = FMn + MMn;
+                //mn = gsl_ran_binomial(rngm, 1.0*FGamx.m/FGamx.M, 2*FGamx.M-MGamx.M)+MGamx.m;
+                //int Fmn = gsl_ran_hypergeometric (rngm, 2*FGamx.m, 2*FGamx.M-2*FGamx.m, 2*FGamx.M-Ms/2);
+                //int FMn = 2*FGamx.M-Ms/2;
+                //int Mmn = MGamx.m; int MMn = MGamx.M;
+                mn = gsl_ran_hypergeometric(rngm, 2*FGamx.m, 2*FGamx.M-2*FGamx.m, 2*FGamx.M - MGamx.M ) + MGamx.m;
+                Mn = 2*FGamx.M;
+		assert(mn<=Mn);
+		//cout << Mn << ' ' << Ms*pow(2.0,Q)<<endl;
+		assert(Mn==Ms*pow(2.0,Q));
 	}
 	else if (IM==0){
 		//UPI fusion
 		mn = 2*FGamx.m;
 		Mn = 2*FGamx.M;
-	}
-	int q = log2(1.0*FGamx.M/Ms) + 1;
-	assert(q==Q);
-	assert(FGamx.M == Ms/2 * pow(2.0,q));
-	//mn = gsl_ran_binomial(rngm, 1.0*mn/Mn, Ms*pow(2.0,q));
-	Mn = Ms*pow(2.0,q);
+		assert(Mn==Ms*pow(2.0,Q));
+	}	
+	//mn = gsl_ran_binomial(rngm, 1.0*mn/Mn, Ms*pow(2.0,Q));
 	Organism Org;
 	gtype Gggx; Gggx = gtype (2,0);
 	Gggx[0] = FGamx.Gg; Gggx[1] = MGamx.Gg;

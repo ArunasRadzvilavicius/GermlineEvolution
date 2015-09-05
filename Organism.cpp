@@ -50,9 +50,9 @@ void Organism::Grow(){
 			Mitosis();
 			divcount += 1;
 		}
-		assert(gline.size()==0);
+		assert(pregline.size()==0);
 		Gametogenesis();
-		assert(gline.size()==2);
+		assert(pregline.size()==1);
 	}
 
 	while (divcount<Gt){
@@ -89,7 +89,7 @@ void Organism::Grow(){
 		}
 	}
 	else{
-		assert(gline.size()!=0);
+		assert(pregline.size()!=0);
 		while (divcount < Gs+Gt){
 			TissueMutation();
 			TissueMitosis();
@@ -228,43 +228,68 @@ double Organism::TissueFitness(vector<cell> tissuex){
 	return accumulate(fits.begin(), fits.end(), 0.0) / fits.size();
 }
 
+void Organism::CompleteGametogenesis(){
+        //meiosis
+	int Qp;
+        if (Qg[0]==Qg[1]){assert(Qg[0]==0);}
+        else {assert(Qg[0]>Qg[1]);}
+        Qp = Qg[0];
+	assert((int)pregline.size()==1);
+	int m = pregline[0][0];
+	m = Amplify(m,Qp);
+	int M = pregline[0][1];
+	assert(M==Ms);
+	M = M*pow(2.0,Qp); 
+        int m1 = gsl_ran_hypergeometric (rngo, 2*m, 2*M-2*m, M);
+        int m2 = 2*m - m1;
+        int m11, m21;
+        m11 = gsl_ran_hypergeometric (rngo, m1, M-m1, M/2);
+        m21 = gsl_ran_hypergeometric (rngo, m2, M-m2, M/2);
+        Gamete gam1;
+        Gamete gam2;
+	Ggg = Mix(Ggg[0],Ggg[1]);
+        int nA = 1; // no UPI invasion, so can be anything
+        gam1 = Gamete(m11,M/2,nA,WZg[0],Ggg[0],Gt,Gs,Qg[0]);
+
+        assert((int)pregline.size()==1);
+        if (Qg[0]==Qg[1]){assert(Qg[0]==0);}
+        else {assert(Qg[0]>Qg[1]);}
+        Qp = Qg[0];
+        m = pregline[0][0];
+	m = Amplify(m,Qp);
+        M = pregline[0][1];
+	M = M*pow(2.0,Qp);
+        m1 = gsl_ran_hypergeometric (rngo, 2*m, 2*M-2*m, M);
+        m2 = 2*m - m1;
+        m11 = gsl_ran_hypergeometric (rngo, m1, M-m1, M/2);
+        m21 = gsl_ran_hypergeometric (rngo, m2, M-m2, M/2);
+        nA = 1; // no UPI invasion, so can be anything
+
+        gam2 = Gamete(m21,M/2,nA,WZg[1],Ggg[1],Gt,Gs,Qg[1]);
+        gline.push_back(gam1);
+        gline.push_back(gam2);
+
+}
+
 void Organism::Gametogenesis(){
-	assert(gline.size()==0);
+	assert(pregline.size()==0);
 	int ncells = soma.size();
 	int r = gsl_rng_uniform_int (rngo, ncells);
 	int m = soma[r][0];
-	int M = soma[r][1];
-	if (M > Ms) {
-		m = m/M*Ms;
-		M = Ms;
-	}	
+	int M = soma[r][1];	
 	for (int i=0;i<(L-GgP);i++){
 		int dm = gsl_ran_binomial(rngo, mug, M-m);
 		m += dm;
 	}
-	//meiosis
-	int m1 = gsl_ran_hypergeometric (rngo, 2*m, 2*M-2*m, M);
-	int m2 = 2*m - m1;
-	int m11, m21;
-	m11 = gsl_ran_hypergeometric (rngo, m1, M-m1, M/2);
-	m21 = gsl_ran_hypergeometric (rngo, m2, M-m2, M/2);
-	if (Qg[0]==Qg[1]){assert(Qg[0]==0);}
-	else {assert(Qg[0]>Qg[1]);}
-	int Qp = Qg[0];
-	m11 = Amplify(m11,Qp);
-	m21 = Amplify(m21,Qp);
-	Gamete gam1;
-	Gamete gam2;
-	int nA = 1; // no UPI invasion, so can be anything
-	Ggg = Mix(Ggg[0],Ggg[1]);
-	gam1 = Gamete(m11,M/2*(int)pow(2.0,Qp),nA,WZg[0],Ggg[0],Gt,Gs,Qg[0]);
-	gam2 = Gamete(m21,M/2*(int)pow(2.0,Qp),nA,WZg[1],Ggg[1],Gt,Gs,Qg[1]);
-	gline.push_back(gam1);
-	gline.push_back(gam2);
+	assert(m<=M);
+	vector<int> pregam (2,0);
+	pregam[0] = m;
+	pregam[1] = M;
+	pregline.push_back(pregam);
 }
 
 void Organism::SomaticGametogenesis(){
-	assert(gline.size()==0);
+	assert(pregline.size()==0);
 	int ntissues = Tissues.size();
 	int rt = gsl_rng_uniform_int (rngo, ntissues);
 	vector<cell> tissue = Tissues[rt];
@@ -276,25 +301,10 @@ void Organism::SomaticGametogenesis(){
 		int dm = gsl_ran_binomial(rngo, mug, M-m);
 		m += dm;
 	}
-	//meiosis
-	int m1 = gsl_ran_hypergeometric (rngo, 2*m, 2*M-2*m, M);
-	int m2 = 2*m - m1;
-	int m11, m21;
-	m11 = gsl_ran_hypergeometric (rngo, m1, M-m1, M/2);
-	m21 = gsl_ran_hypergeometric (rngo, m2, M-m2, M/2);
-	if (Qg[0]==Qg[1]){assert(Qg[0]==0);}
-	else {assert(Qg[0]>Qg[1]);}
-	int Qp = Qg[0];
-	m11 = Amplify(m11,Qp);
-	m21 = Amplify(m21,Qp);
-	Gamete gam1;
-	Gamete gam2;
-	int nA = 1; // no UPI invasion, so can be anything
-	Ggg = Mix(Ggg[0],Ggg[1]);
-	gam1 = Gamete(m11,M/2*(int)pow(2.0,Qp),nA,WZg[0],Ggg[0],Gt,Gs,Qg[0]);
-	gam2 = Gamete(m21,M/2*(int)pow(2.0,Qp),nA,WZg[1],Ggg[1],Gt,Gs,Qg[1]);
-	gline.push_back(gam1);
-	gline.push_back(gam2);
+	vector<int> pregam (2,0);
+	pregam[0] = m;
+	pregam[1] = M;
+	pregline.push_back(pregam);
 }
 
 int Organism::Amplify(int mx, int Qx){
